@@ -1,0 +1,574 @@
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script>
+	var uid = "chechy";
+	var pwd = "passw0rd!"
+	var url999 = "https://www.999dice.com/api/web.aspx";
+	var key = "ed6ba17d35234f3fa20af22de36fecd8";
+	// fe1361ec73704c289e9f9698bb50f5b6
+	var lpwdValue = '';
+	var luidValue = '';
+	
+	var lowlow = 0;
+	var lowhigh = 549999;
+	var highlow = 450000;
+	var highhigh = 999999;
+	/*
+	CURRENT:
+	var lowhigh = 499499;
+	var highlow = 500500;
+	var highhigh = 999999;
+
+	40:
+	var lowhigh = 399999;
+	var highlow = 600000;
+	var highhigh = 999999;
+
+	55:
+	var lowhigh = 549999;
+	var highlow = 450000;
+	var highhigh = 999999;
+	*/
+	var low = 0;
+	var high = 0;
+	
+	var currency = 'doge';
+	var incKeof = '2';
+	var aBet = true;
+	var sBet = false;
+	var totalProfit = 0;
+	var bettingStarted = false;
+	var autoBetBasePayIn = 200000;
+	var maxBets = 7;
+	var profitTarget = 250000000;
+	var currentProfitTarget = 0;
+	var profitForWithdraw = 0;
+	var withdrawAmount = 1000000000;
+	withdrawAcount = '50060500';
+	
+	fromSingle = false;
+	// console.debug('!!!->Initially fromSingle: ' + fromSingle);
+	startInternally = false;
+
+	var lastPayIn = 0;
+	
+	var bettingMode = false;
+	
+	var loginResponse = [];
+	
+	/// Callback Methods
+	function loginReady(response)
+	{
+		loginResponse = JSON.parse(response);
+		if (loginResponse.InvalidApiKey == 1)
+		{
+			console.log('!!!ERROR:LI: Invalid API Key: ' + key);
+		}
+		else if (loginResponse.LoginInvalid == 1)
+		{
+			console.log('!!!ERROR:LI: Invalid Login ...');
+		}
+		else if (loginResponse.error)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:LI: ' + loginResponse.error);
+			console.log('Error respone: ' + response);
+		}
+		else
+		{
+			console.log("Successfull login. SessionCookie: " + loginResponse.SessionCookie);
+			console.log("Successfull login. ClientSeed: " + loginResponse.ClientSeed);
+			$("#logininfo").hide();
+			$("#actions").show();
+			
+			GetBalance();
+		}	
+	}
+	
+	function autoBetReady(response)
+	{
+		compactResult = JSON.parse(response);
+		
+		if (compactResult.error)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:AB: ' + compactResult.error);
+			console.log('Error respone: ' + response);
+		}
+		
+		if (compactResult.ChanceTooHigh == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:AB: Chance too High ...');
+			return;
+		}
+		
+		if (compactResult.ChanceTooLow == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:AB: Chance too Low ...');
+			return;
+		}
+		
+		if (compactResult.InsufficientFunds == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:AB: Insufficient Funds ...');
+			return;
+		}
+		
+		if (compactResult.NoPossibleProfit == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:AB: No Possible Profit ...');
+			return;
+		}
+		
+		if (compactResult.MaxPayoutExceeded == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:AB: Max Payout Exceeded ...');
+			return;
+		}
+		
+		compactResult.Profit = (compactResult.PayOut + compactResult.PayIn);
+		
+		totalProfit += compactResult.Profit;
+		currentProfitTarget += compactResult.Profit;
+		profitForWithdraw += compactResult.Profit;
+		
+		$("#profitv").html((totalProfit / 100000000).toFixed(8));
+		$("#lprofitv").html((compactResult.Profit / 100000000).toFixed(8));
+					
+		$("#balancev").html(((compactResult.StartingBalance + compactResult.Profit) / 100000000).toFixed(8));
+		
+		// if (currentProfitTarget < 0 && compactResult.Profit < 0)
+		if (compactResult.Profit && currentProfitTarget < 0 && !fromSingle)
+		{
+			aBet = false;
+			sBet = true;
+			
+			console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
+			setTimeout(function(){
+				PlaceSingleBet(Math.ceil(0 - compactResult.Profit * 2.50), 1000);
+			});
+		}
+		else
+		{
+			if (fromSingle && currentProfitTarget < 0)
+			{
+				console.log('First lost in a row - skipping this lost: ' + compactResult.Profit);
+			}
+			fromSingle = false;
+			// console.debug('!!!->AB: fromSingle: ' + fromSingle);
+			
+			// console.debug('!!!DEBUG!!! -> currentProfitTarget (auto bet): ' + currentProfitTarget);
+			if (currentProfitTarget > profitTarget)
+			{
+				currentProfitTarget = 0;
+				
+				console.log('Profit Target: ' + (profitTarget / 100000000).toFixed(8) + ' reached. Continue with betting ...');
+				
+				startInternally = true;
+				
+				/// 
+				// $("#startbet").click();
+				// $("#resetall").click();
+				
+				totalProfit = 0;
+				currentProfitTarget = 0;
+				lastPayIn = 0;
+				$("#profitv").html((totalProfit / 100000000).toFixed(8));
+				
+				$("#sbalancev").html(((compactResult.StartingBalance + compactResult.Profit) / 100000000).toFixed(8));
+				
+				bettingStarted = true;
+				setTimeout(StartBetting);
+
+				///
+				/// $("#startbet").click();
+				
+				return;
+			}
+		
+			setTimeout(StartBetting);
+		}
+	}
+	
+	function withdrawReady(response)
+	{
+		withdrawResult = JSON.parse(response);
+		if (withdrawResult.error)
+		{
+			console.log('!!!ERROR:WD: ' + withdrawResult.error);
+			console.log('Error respone: ' + response);
+		}
+		else
+		{
+			console.log(withdrawResult.Pending + ' amount is pending for withdrawal ...');
+		}
+	}
+	
+	function getBalanceReady(response)
+	{
+		balance = JSON.parse(response);
+		if (balance.error)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:GB: ' + balance.error);
+			console.log('Error respone: ' + response);
+		}
+		else
+		{
+			if (balance)
+			{
+				$("#stats").show();
+				if (balance.Balance)
+				{
+					$("#balancev").html((balance.Balance / 100000000).toFixed(8));
+					$("#sbalancev").html((balance.Balance / 100000000).toFixed(8));
+				}
+			}
+		}
+	}
+	
+	function singleBetReady(response)
+	{
+		singleBet = JSON.parse(response);
+		
+		if (singleBet.error)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:PSB: ' + singleBet.error);
+			return;
+		}
+		
+		if (singleBet.ChanceTooHigh == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:PSB: Chance too High ...');
+			return;
+		}
+		
+		if (singleBet.ChanceTooLow == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:PSB: Chance too Low ...');
+			return;
+		}
+		
+		if (singleBet.InsufficientFunds == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:PSB: Insufficient Funds ...');
+			return;
+		}
+		
+		if (singleBet.NoPossibleProfit == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:PSB: No Possible Profit ...');
+			return;
+		}
+		
+		if (singleBet.MaxPayoutExceeded == 1)
+		{
+			bettingStarted = false;
+			console.log('!!!ERROR:PSB: Max Payout Exceeded ...');
+			return;
+		}
+		
+		fromSingle = true;
+		// console.debug('!!!->SB: fromSingle: ' + fromSingle);
+		
+		singleBet.Profit = singleBet.PayOut - lastPayIn;
+		
+		totalProfit += singleBet.Profit;
+		currentProfitTarget += singleBet.Profit;
+		profitForWithdraw += singleBet.Profit;
+		
+		$("#profitv").html((totalProfit / 100000000).toFixed(8));
+		$("#lprofitv").html((singleBet.Profit / 100000000).toFixed(8));
+		
+		var currentBalance = (singleBet.StartingBalance + singleBet.Profit);
+		
+		$("#balancev").html((currentBalance / 100000000).toFixed(8));
+		
+		if (singleBet.Profit < 0)
+		{
+			console.log('Lost to cover: ' + (singleBet.Profit / 100000000).toFixed(8));
+			setTimeout(function(){
+				PlaceSingleBet(Math.ceil(lastPayIn * 2.50), 1000);
+			});
+		}
+		else
+		{
+			// console.debug('!!!DEBUG!!! -> currentProfitTarget (single bet): ' + currentProfitTarget);
+			console.log("Covered ...");
+			aBet = true;
+			sBet = false;
+			setTimeout(StartBetting);
+		}
+	}
+ 	/// END: Callback Methods
+
+	/// Main Init function
+	$( window ).load(function() 
+	{
+		$("#login").attr("disabled", "disabled");
+		$("#login").on(
+			"click",
+			function(eventObject) 
+			{
+				console.log("Sending Login request ...");
+				uid = luidValue;
+				pwd = lpwdValue;
+				$.ajax({
+					method: "POST",
+					url: url999,
+					data: { a: "Login", key: key, Username: uid, Password: pwd }
+				})
+				.done(loginReady)
+			}
+		);
+		
+		$("#startbet").on(
+			"click",
+			function(eventObject)
+			{
+				if (!bettingStarted)
+				{
+					fromSingle = true;
+					// console.debug('!!!->PT: fromSingle: ' + fromSingle);
+					
+					if (!startInternally)
+					{
+						console.log('Start betting ...');
+					}
+					
+					$("#startbet").attr("value", "Stop Bet");
+					$("#resetall").attr('disabled','disabled');
+					
+					bettingStarted = true;
+					
+					setTimeout(StartBetting);
+				}
+				else
+				{
+					console.log('Send ginal to stop betting ...');
+					$("#startbet").attr("value", "Start Bet");
+					$("#resetall").removeAttr('disabled');
+					
+					bettingStarted = false;
+				}
+			}
+		);
+		
+		// 0 - 399999
+		// 600000 - 999999
+		
+		/*
+		$("#resetall").on(
+			"click",
+			function(eventObject)
+			{
+				totalProfit = 0;
+				var currentProfitTarget = 0;
+				var lastPayIn = 0;
+				$("#profitv").html((totalProfit / 100000000).toFixed(8));
+				GetBalance();
+			}
+		);
+		*/
+		
+		$("#basePayIn").blur(function()
+		{
+			autoBetBasePayIn = $("#basePayIn").val();
+			console.log("Base PayIn is changed to: " + (autoBetBasePayIn / 100000000.0).toFixed(8));
+		});
+		
+		$("#targetProfitValue").blur(function()
+		{
+			profitTarget = $("#targetProfitValue").val();
+			console.log("Profit Target is changed to: " + (profitTarget / 100000000.0).toFixed(8));
+		});
+		
+		/// Login Details
+		$("#lpwd").blur(function()
+		{
+			lpwdValue = $("#lpwd").val();
+			if (lpwdValue != '' && luidValue != '')
+			{
+				$("#login").removeAttr('disabled');
+			}
+			else
+			{
+				$("#login").attr('disabled','disabled');
+			}
+		});
+		
+		$("#luid").blur(function()
+		{
+			luidValue = $("#luid").val();
+			if (lpwdValue != '' && luidValue != '')
+			{
+				$("#login").removeAttr('disabled');
+			}
+			else
+			{
+				$("#login").attr('disabled','disabled');
+			}
+		});
+		/// END: Login Details
+	});
+	/// END: Main Init function
+	
+	function GetBalance()
+	{
+		var balance = null;
+		$.ajax({
+			method: "POST",
+			url: url999,
+			async: false,
+			data: { a: "GetBalance", s: loginResponse.SessionCookie, Currency: currency }
+		})
+		.done(getBalanceReady);
+		
+		return balance;
+	}
+	
+	function PlaceSingleBet(payIn)
+	{
+		lastPayIn = payIn;
+		var singleBet = null;
+		
+		if (Math.random() < 0.5)
+		{
+			low = lowlow;
+			high = lowhigh;
+		}
+		else
+		{
+			low = highlow;
+			high = highhigh;
+		}
+		
+		console.log('Betting ' + ((low == lowlow)? 'low': 'high')) + ' for coverring lost';
+		
+		$("#bmode").html(((low == lowlow)? "low": "high"));
+		
+		$.ajax({
+			method: "POST",
+			url: url999,
+			async: false,
+			data: { 
+				a: "PlaceBet", 
+				s: loginResponse.SessionCookie, 
+				PayIn: lastPayIn,
+				Low: low,
+				High: high,
+				ClientSeed: loginResponse.ClientSeed,
+				Currency: currency,
+				ProtocolVersion: 2 
+			}
+		})
+		.done(singleBetReady);
+		
+		return singleBet;	
+	}
+	
+	function StartBetting()
+	{
+		if (!bettingStarted)
+		{
+			console.log('Betting stopped ...');
+			return;
+		}
+		
+		/*
+		if (currentProfitTarget < (0 - profitTarget))
+		{
+			console.log('Too much lost: ' + (currentProfitTarget / 100000000) + '. Betting is stopped ...');
+			bettingStarted = false;
+			
+			return;
+		}
+		*/
+		
+		if (profitForWithdraw > withdrawAmount)
+		{
+			console.log('Will withdraw ' + (withdrawAmount / 100000000) + ' to ' + withdrawAcount);
+			profitForWithdraw = 0;
+			$.ajax({
+				method: "POST",
+				url: url999,
+				data: { 
+					a: "Withdraw", 
+					s: loginResponse.SessionCookie, 
+					Amount: withdrawAmount,
+					Address: withdrawAcount,
+					Currency: currency
+				}
+			})
+			.done(withdrawReady);
+
+		}
+
+		if (Math.random() < 0.5)
+		{
+			low = lowlow;
+			high = lowhigh;
+		}
+		else
+		{
+			low = highlow;
+			high = highhigh;
+		}
+		
+		$("#bmode").html(((low == lowlow)? "low": "high"));
+
+		var compactResult = null;
+		$.ajax({
+			method: "POST",
+			url: url999,
+			data: { 
+				a: "PlaceAutomatedBets", 
+				s: loginResponse.SessionCookie, 
+				BasePayIn: autoBetBasePayIn,
+				Low: low,
+				High: high,
+				MaxBets: maxBets,
+				ResetOnWin: 1,
+				IncreaseOnLosePercent: 2.50,
+				ClientSeed: loginResponse.ClientSeed,
+				Currency: currency, 
+				Compact: 1,
+				ProtocolVersion: 2
+			}
+		})
+		.done(autoBetReady);
+	}
+	
+    </script>
+</head>
+<body>
+	<div id="logininfo">
+		Username: <input type="text" id="luid" /><br />
+		Password: <input type="password" id="lpwd" /><br />
+		<input type="button" id="login" value="Login" />
+	</div>
+	<span id="actions" style="display: none;"><input type="button" id="startbet" value="Start Bet"/><input type="button" id="resetall" value="Reset All" disabled="true" /></span><br />
+	<div id="stats" style="display: none;">
+	Starting Balance:<strong id="sbalancev"></strong><br />
+	Balance:<strong id="balancev"></strong><br />
+	Profit:<strong id="profitv"></strong><br />
+	Last Profit: <strong id="lprofitv"></strong><br />
+	betting: <strong id="bmode"></strong><br />
+	<span id="log" style="display: none;"></span>
+	<hr />
+	Base PayIn:<input type="text" id="basePayIn" value="200000" /><br />
+	Target Profit:<input type="text" id="targetProfitValue" value="250000000" />
+	</div>
+</body>
+</html>
