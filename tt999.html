@@ -1,6 +1,8 @@
 <html>
 <head>
     <script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <style>
+    </style>
     <script>
 	var uid = "chechy";
 	var pwd = "passw0rd!"
@@ -48,7 +50,6 @@
 	withdrawAcount = '50060500';
 	
 	fromSingle = false;
-	// console.debug('!!!->Initially fromSingle: ' + fromSingle);
 	startInternally = false;
 
 	var lastPayIn = 0;
@@ -139,11 +140,13 @@
 		profitForWithdraw += compactResult.Profit;
 		
 		$("#profitv").html((totalProfit / 100000000).toFixed(8));
+		(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
+		
 		$("#lprofitv").html((compactResult.Profit / 100000000).toFixed(8));
+		(compactResult.Profit < 0) ? $("#lprofitv").css('color', 'red'): $("#lprofitv").css('color', 'black');
 					
 		$("#balancev").html(((compactResult.StartingBalance + compactResult.Profit) / 100000000).toFixed(8));
 		
-		// if (currentProfitTarget < 0 && compactResult.Profit < 0)
 		if (compactResult.Profit && currentProfitTarget < 0 && !fromSingle)
 		{
 			aBet = false;
@@ -161,9 +164,7 @@
 				console.log('First lost in a row - skipping this lost: ' + compactResult.Profit);
 			}
 			fromSingle = false;
-			// console.debug('!!!->AB: fromSingle: ' + fromSingle);
 			
-			// console.debug('!!!DEBUG!!! -> currentProfitTarget (auto bet): ' + currentProfitTarget);
 			if (currentProfitTarget > profitTarget)
 			{
 				currentProfitTarget = 0;
@@ -172,22 +173,16 @@
 				
 				startInternally = true;
 				
-				/// 
-				// $("#startbet").click();
-				// $("#resetall").click();
-				
 				totalProfit = 0;
 				currentProfitTarget = 0;
 				lastPayIn = 0;
 				$("#profitv").html((totalProfit / 100000000).toFixed(8));
+				(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
 				
 				$("#sbalancev").html(((compactResult.StartingBalance + compactResult.Profit) / 100000000).toFixed(8));
 				
 				bettingStarted = true;
 				setTimeout(StartBetting);
-
-				///
-				/// $("#startbet").click();
 				
 				return;
 			}
@@ -280,7 +275,6 @@
 		}
 		
 		fromSingle = true;
-		// console.debug('!!!->SB: fromSingle: ' + fromSingle);
 		
 		singleBet.Profit = singleBet.PayOut - lastPayIn;
 		
@@ -289,7 +283,10 @@
 		profitForWithdraw += singleBet.Profit;
 		
 		$("#profitv").html((totalProfit / 100000000).toFixed(8));
+		(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
+		
 		$("#lprofitv").html((singleBet.Profit / 100000000).toFixed(8));
+		(singleBet.Profit < 0) ? $("#lprofitv").css('color', 'red'): $("#lprofitv").css('color', 'black');
 		
 		var currentBalance = (singleBet.StartingBalance + singleBet.Profit);
 		
@@ -304,7 +301,6 @@
 		}
 		else
 		{
-			// console.debug('!!!DEBUG!!! -> currentProfitTarget (single bet): ' + currentProfitTarget);
 			console.log("Covered ...");
 			aBet = true;
 			sBet = false;
@@ -340,7 +336,6 @@
 				if (!bettingStarted)
 				{
 					fromSingle = true;
-					// console.debug('!!!->PT: fromSingle: ' + fromSingle);
 					
 					if (!startInternally)
 					{
@@ -367,20 +362,6 @@
 		
 		// 0 - 399999
 		// 600000 - 999999
-		
-		/*
-		$("#resetall").on(
-			"click",
-			function(eventObject)
-			{
-				totalProfit = 0;
-				var currentProfitTarget = 0;
-				var lastPayIn = 0;
-				$("#profitv").html((totalProfit / 100000000).toFixed(8));
-				GetBalance();
-			}
-		);
-		*/
 		
 		$("#basePayIn").blur(function()
 		{
@@ -485,16 +466,6 @@
 			console.log('Betting stopped ...');
 			return;
 		}
-		
-		/*
-		if (currentProfitTarget < (0 - profitTarget))
-		{
-			console.log('Too much lost: ' + (currentProfitTarget / 100000000) + '. Betting is stopped ...');
-			bettingStarted = false;
-			
-			return;
-		}
-		*/
 		
 		if (profitForWithdraw > withdrawAmount)
 		{
