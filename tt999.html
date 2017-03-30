@@ -40,6 +40,7 @@
 	var aBet = true;
 	var sBet = false;
 	var totalProfit = 0;
+	var sessionProfit = 0;
 	var bettingStarted = false;
 	var autoBetBasePayIn = 200000;
 	var maxBets = 7;
@@ -49,6 +50,8 @@
 	var withdrawAmount = 1000000000;
 	withdrawAcount = '50060500';
 	
+	loseKoef = 209.688;
+	
 	fromSingle = false;
 	startInternally = false;
 
@@ -57,6 +60,37 @@
 	var bettingMode = false;
 	
 	var loginResponse = [];
+	
+	/// Helper functions
+	function callStartBetting(resultProfit)
+	{
+		fromSingle = false;
+		
+		if (currentProfitTarget > profitTarget)
+		{
+			currentProfitTarget = 0;
+			
+			console.log('Profit Target: ' + (profitTarget / 100000000).toFixed(8) + ' reached. Continue with betting ...');
+			
+			startInternally = true;
+			
+			totalProfit = 0;
+			currentProfitTarget = 0;
+			lastPayIn = 0;
+			$("#profitv").html((totalProfit / 100000000).toFixed(8));
+			(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
+			
+			$("#sbalancev").html(((compactResult.StartingBalance + resultProfit) / 100000000).toFixed(8));
+			
+			bettingStarted = true;
+			// setTimeout(StartBetting);
+			
+			// return;
+		}
+	
+		setTimeout(StartBetting);
+	}
+	/// END: Helper functions
 	
 	/// Callback Methods
 	function loginReady(response)
@@ -78,6 +112,7 @@
 		}
 		else
 		{
+			$("#loggedin").html(uid);
 			console.log("Successfull login. SessionCookie: " + loginResponse.SessionCookie);
 			console.log("Successfull login. ClientSeed: " + loginResponse.ClientSeed);
 			$("#logininfo").hide();
@@ -134,10 +169,15 @@
 		}
 		
 		compactResult.Profit = (compactResult.PayOut + compactResult.PayIn);
-		
+
+		sessionProfit += compactResult.Profit;
 		totalProfit += compactResult.Profit;
 		currentProfitTarget += compactResult.Profit;
 		profitForWithdraw += compactResult.Profit;
+		
+		/// Total Profit for the session
+		$("#sprofitv").html((sessionProfit / 100000000).toFixed(8));
+		(sessionProfit < 0) ? $("#sprofitv").css('color', 'red'): $("#sprofitv").css('color', 'black');
 		
 		$("#profitv").html((totalProfit / 100000000).toFixed(8));
 		(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
@@ -147,47 +187,44 @@
 					
 		$("#balancev").html(((compactResult.StartingBalance + compactResult.Profit) / 100000000).toFixed(8));
 		
-		if (compactResult.Profit && currentProfitTarget < 0 && !fromSingle)
+		if (compactResult.Profit < 0)
 		{
-			aBet = false;
-			sBet = true;
-			
-			console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
-			setTimeout(function(){
-				PlaceSingleBet(Math.ceil(0 - compactResult.Profit * 2.50), 1000);
-			});
+			if (currentProfitTarget < 0)
+			{
+				if (compactResult.Profit > (0 - autoBetBasePayIn * loseKoef))
+				{
+					if (!fromSingle)
+					{
+						aBet = false;
+						sBet = true;
+						
+						console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
+						setTimeout(function(){
+							PlaceSingleBet(Math.ceil(0 - compactResult.Profit * 2.50), 1000);
+						});
+					}
+					else
+					{
+						console.log('First lost in a row - skipping this lost: ' + compactResult.Profit);
+
+						callStartBetting( compactResult.Profit);
+					}
+				}
+				else
+				{
+					console.log('Too much lost to cover .... Continue ...');
+					
+					callStartBetting( compactResult.Profit);
+				}
+			}
+			else
+			{
+				callStartBetting( compactResult.Profit);
+			}
 		}
 		else
 		{
-			if (fromSingle && currentProfitTarget < 0)
-			{
-				console.log('First lost in a row - skipping this lost: ' + compactResult.Profit);
-			}
-			fromSingle = false;
-			
-			if (currentProfitTarget > profitTarget)
-			{
-				currentProfitTarget = 0;
-				
-				console.log('Profit Target: ' + (profitTarget / 100000000).toFixed(8) + ' reached. Continue with betting ...');
-				
-				startInternally = true;
-				
-				totalProfit = 0;
-				currentProfitTarget = 0;
-				lastPayIn = 0;
-				$("#profitv").html((totalProfit / 100000000).toFixed(8));
-				(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
-				
-				$("#sbalancev").html(((compactResult.StartingBalance + compactResult.Profit) / 100000000).toFixed(8));
-				
-				bettingStarted = true;
-				setTimeout(StartBetting);
-				
-				return;
-			}
-		
-			setTimeout(StartBetting);
+			callStartBetting( compactResult.Profit);
 		}
 	}
 	
@@ -278,9 +315,14 @@
 		
 		singleBet.Profit = singleBet.PayOut - lastPayIn;
 		
+		sessionProfit += singleBet.Profit;
 		totalProfit += singleBet.Profit;
 		currentProfitTarget += singleBet.Profit;
 		profitForWithdraw += singleBet.Profit;
+		
+		/// Total Profit for the whole Session
+		$("#sprofitv").html((sessionProfit / 100000000).toFixed(8));
+		(sessionProfit < 0) ? $("#sprofitv").css('color', 'red'): $("#sprofitv").css('color', 'black');
 		
 		$("#profitv").html((totalProfit / 100000000).toFixed(8));
 		(totalProfit < 0) ? $("#profitv").css('color', 'red'): $("#profitv").css('color', 'black');
@@ -531,8 +573,10 @@
 	</div>
 	<span id="actions" style="display: none;"><input type="button" id="startbet" value="Start Bet"/><input type="button" id="resetall" value="Reset All" disabled="true" /></span><br />
 	<div id="stats" style="display: none;">
+	Logged in as: <strong id="loggedin"></strong><br />
 	Starting Balance:<strong id="sbalancev"></strong><br />
 	Balance:<strong id="balancev"></strong><br />
+	Session profit: <strong id="sprofitv"></strong><br />
 	Profit:<strong id="profitv"></strong><br />
 	Last Profit: <strong id="lprofitv"></strong><br />
 	betting: <strong id="bmode"></strong><br />
