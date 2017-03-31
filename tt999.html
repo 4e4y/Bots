@@ -50,7 +50,7 @@
 	var withdrawAmount = 1000000000;
 	withdrawAcount = '50060500';
 	
-	loseKoef = 209.688;
+	loseKoef = 734.906;
 	
 	fromSingle = false;
 	startInternally = false;
@@ -409,6 +409,22 @@
 		{
 			autoBetBasePayIn = $("#basePayIn").val();
 			console.log("Base PayIn is changed to: " + (autoBetBasePayIn / 100000000.0).toFixed(8));
+			
+			sumSoFar = parseInt(autoBetBasePayIn);
+			tempSum = parseInt(autoBetBasePayIn);
+			// console.log('Initial value for sumSoFar: ' + sumSoFar);
+			// console.log('Initial value for tempSum: ' + tempSum);
+			for (index = 1; index < 5; index++)
+			{
+				tempSum = tempSum * 3.5;
+				sumSoFar += tempSum;
+				// console.log('After ' + index + ' iteration sumSoFar: ' + sumSoFar);
+				// console.log('After ' + index + ' iteration tempSum: ' + tempSum);
+			}
+			
+			console.log('Lose coeficient will be set to: ' + (sumSoFar / parseInt(autoBetBasePayIn)));
+			loseKoef = (sumSoFar / parseInt(autoBetBasePayIn));
+			// console.log('Lose coeficient will be set to: ' + tempSum);
 		});
 		
 		$("#targetProfitValue").blur(function()
