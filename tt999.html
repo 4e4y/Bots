@@ -51,6 +51,9 @@
 	withdrawAcount = '50060500';
 	
 	loseKoef = 734.906;
+	loseKoefMax = 734.906;
+	lostValueToSkip = autoBetBasePayIn * loseKoef;
+	lostValueToStop = autoBetBasePayIn * loseKoefMax;
 	
 	fromSingle = false;
 	startInternally = false;
@@ -98,17 +101,17 @@
 		loginResponse = JSON.parse(response);
 		if (loginResponse.InvalidApiKey == 1)
 		{
-			console.log('!!!ERROR:LI: Invalid API Key: ' + key);
+			console.error('!!!ERROR:LI: Invalid API Key: ' + key);
 		}
 		else if (loginResponse.LoginInvalid == 1)
 		{
-			console.log('!!!ERROR:LI: Invalid Login ...');
+			console.error('!!!ERROR:LI: Invalid Login ...');
 		}
 		else if (loginResponse.error)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:LI: ' + loginResponse.error);
-			console.log('Error respone: ' + response);
+			console.error('!!!ERROR:LI: ' + loginResponse.error);
+			console.error('Error respone: ' + response);
 		}
 		else
 		{
@@ -129,42 +132,42 @@
 		if (compactResult.error)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:AB: ' + compactResult.error);
-			console.log('Error respone: ' + response);
+			console.error('!!!ERROR:AB: ' + compactResult.error);
+			console.error('Error respone: ' + response);
 		}
 		
 		if (compactResult.ChanceTooHigh == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:AB: Chance too High ...');
+			console.error('!!!ERROR:AB: Chance too High ...');
 			return;
 		}
 		
 		if (compactResult.ChanceTooLow == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:AB: Chance too Low ...');
+			console.error('!!!ERROR:AB: Chance too Low ...');
 			return;
 		}
 		
 		if (compactResult.InsufficientFunds == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:AB: Insufficient Funds ...');
+			console.error('!!!ERROR:AB: Insufficient Funds ...');
 			return;
 		}
 		
 		if (compactResult.NoPossibleProfit == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:AB: No Possible Profit ...');
+			console.error('!!!ERROR:AB: No Possible Profit ...');
 			return;
 		}
 		
 		if (compactResult.MaxPayoutExceeded == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:AB: Max Payout Exceeded ...');
+			console.error('!!!ERROR:AB: Max Payout Exceeded ...');
 			return;
 		}
 		
@@ -191,10 +194,10 @@
 		{
 			if (currentProfitTarget < 0)
 			{
-				if (compactResult.Profit > (0 - autoBetBasePayIn * loseKoef))
+				if ((0 - compactResult.Profit) < lostValueToSkip)
 				{
-					if (!fromSingle)
-					{
+					// if (!fromSingle)
+					// {
 						aBet = false;
 						sBet = true;
 						
@@ -202,17 +205,19 @@
 						setTimeout(function(){
 							PlaceSingleBet(Math.ceil(0 - compactResult.Profit * 2.50), 1000);
 						});
+					/*
 					}
 					else
 					{
-						console.log('First lost in a row - skipping this lost: ' + compactResult.Profit);
+						console.warn('First lost in a row - skipping this lost: ' + compactResult.Profit);
 
 						callStartBetting( compactResult.Profit);
 					}
+					*/
 				}
 				else
 				{
-					console.log('Too much lost to cover .... Continue ...');
+					console.warn('Too much lost to cover: ' + compactResult.Profit + ' .... Continue ...');
 					
 					callStartBetting( compactResult.Profit);
 				}
@@ -233,8 +238,8 @@
 		withdrawResult = JSON.parse(response);
 		if (withdrawResult.error)
 		{
-			console.log('!!!ERROR:WD: ' + withdrawResult.error);
-			console.log('Error respone: ' + response);
+			console.error('!!!ERROR:WD: ' + withdrawResult.error);
+			console.error('Error respone: ' + response);
 		}
 		else
 		{
@@ -248,8 +253,8 @@
 		if (balance.error)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:GB: ' + balance.error);
-			console.log('Error respone: ' + response);
+			console.error('!!!ERROR:GB: ' + balance.error);
+			console.error('Error respone: ' + response);
 		}
 		else
 		{
@@ -260,6 +265,7 @@
 				{
 					$("#balancev").html((balance.Balance / 100000000).toFixed(8));
 					$("#sbalancev").html((balance.Balance / 100000000).toFixed(8));
+					$("#ssbalancev").html((balance.Balance / 100000000).toFixed(8));
 				}
 			}
 		}
@@ -272,42 +278,42 @@
 		if (singleBet.error)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:PSB: ' + singleBet.error);
+			console.error('!!!ERROR:PSB: ' + singleBet.error);
 			return;
 		}
 		
 		if (singleBet.ChanceTooHigh == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:PSB: Chance too High ...');
+			console.error('!!!ERROR:PSB: Chance too High ...');
 			return;
 		}
 		
 		if (singleBet.ChanceTooLow == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:PSB: Chance too Low ...');
+			console.error('!!!ERROR:PSB: Chance too Low ...');
 			return;
 		}
 		
 		if (singleBet.InsufficientFunds == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:PSB: Insufficient Funds ...');
+			console.error('!!!ERROR:PSB: Insufficient Funds ...');
 			return;
 		}
 		
 		if (singleBet.NoPossibleProfit == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:PSB: No Possible Profit ...');
+			console.error('!!!ERROR:PSB: No Possible Profit ...');
 			return;
 		}
 		
 		if (singleBet.MaxPayoutExceeded == 1)
 		{
 			bettingStarted = false;
-			console.log('!!!ERROR:PSB: Max Payout Exceeded ...');
+			console.error('!!!ERROR:PSB: Max Payout Exceeded ...');
 			return;
 		}
 		
@@ -336,6 +342,39 @@
 		
 		if (singleBet.Profit < 0)
 		{
+			if ((lastPayIn * 2.50) > lostValueToStop)
+			{
+				console.warn("Too much lost will be done ... Betting stopped ...");
+				
+				aBet = true;
+				sBet = false;
+				
+				/*
+				$("#startbet").attr("value", "Start Bet");
+				$("#resetall").removeAttr('disabled');
+				
+				bettingStarted = false;
+				
+				return;
+				
+				aBet = true;
+				sBet = false;
+				*/
+				setTimeout(StartBetting);
+				
+				return;
+			}
+			/*
+			if (sessionProfit < 0 || (sessionProfit > 0 && (lastPayIn * 2.50) > (sessionProfit)))
+			{
+				console.warn("Too much lost will be done ... Continue ...");
+				aBet = true;
+				sBet = false;
+				setTimeout(StartBetting);
+				
+				return;
+			}
+			*/
 			console.log('Lost to cover: ' + (singleBet.Profit / 100000000).toFixed(8));
 			setTimeout(function(){
 				PlaceSingleBet(Math.ceil(lastPayIn * 2.50), 1000);
@@ -412,19 +451,32 @@
 			
 			sumSoFar = parseInt(autoBetBasePayIn);
 			tempSum = parseInt(autoBetBasePayIn);
+			maxKoef = parseInt(autoBetBasePayIn);
 			// console.log('Initial value for sumSoFar: ' + sumSoFar);
 			// console.log('Initial value for tempSum: ' + tempSum);
-			for (index = 1; index < 5; index++)
+			for (index = 1; index < 12; index++)
 			{
 				tempSum = tempSum * 3.5;
-				sumSoFar += tempSum;
+				if (index < 8)
+				{
+					sumSoFar += tempSum;
+					maxKoef += tempSum;
+				}
+				else
+				{
+					maxKoef += tempSum;
+				}
 				// console.log('After ' + index + ' iteration sumSoFar: ' + sumSoFar);
 				// console.log('After ' + index + ' iteration tempSum: ' + tempSum);
 			}
 			
-			console.log('Lose coeficient will be set to: ' + (sumSoFar / parseInt(autoBetBasePayIn)));
 			loseKoef = (sumSoFar / parseInt(autoBetBasePayIn));
-			// console.log('Lose coeficient will be set to: ' + tempSum);
+			lostValueToSkip = autoBetBasePayIn * loseKoef;
+			loseKoefMax = maxKoef / parseInt(autoBetBasePayIn);
+			lostValueToStop = autoBetBasePayIn * loseKoefMax;
+			console.log('Lose coefficient will be set to: ' + (sumSoFar / parseInt(autoBetBasePayIn)));
+			console.log('Skip lost value it set to: ' + (lostValueToSkip / 100000000.0));
+			console.log('Stop lost value is set to: ' + (lostValueToStop / 100000000.0));
 		});
 		
 		$("#targetProfitValue").blur(function()
@@ -525,6 +577,7 @@
 			return;
 		}
 		
+		/*
 		if (profitForWithdraw > withdrawAmount)
 		{
 			console.log('Will withdraw ' + (withdrawAmount / 100000000) + ' to ' + withdrawAcount);
@@ -543,6 +596,7 @@
 			.done(withdrawReady);
 
 		}
+		*/
 
 		if (Math.random() < 0.5)
 		{
@@ -590,6 +644,7 @@
 	<span id="actions" style="display: none;"><input type="button" id="startbet" value="Start Bet"/><input type="button" id="resetall" value="Reset All" disabled="true" /></span><br />
 	<div id="stats" style="display: none;">
 	Logged in as: <strong id="loggedin"></strong><br />
+	Session Starting Balance:<strong id="ssbalancev"></strong><br />
 	Starting Balance:<strong id="sbalancev"></strong><br />
 	Balance:<strong id="balancev"></strong><br />
 	Session profit: <strong id="sprofitv"></strong><br />
