@@ -59,6 +59,7 @@
 	startInternally = false;
 	
 	singleBetCoef = 1.7;
+	maxLostValue = 0.0;
 
 	var lastPayIn = 0;
 	
@@ -348,9 +349,9 @@
 		
 		if (singleBet.Profit < 0)
 		{
-			if ((lastPayIn * singleBetCoef) > lostValueToStop)
+			if ((lastPayIn * singleBetCoef) > maxLostValue)
 			{
-				console.warn("Too much lost will be done ... Betting stopped ...");
+				console.warn("Too much lost will be done -> " + ((lastPayIn * singleBetCoef).toFixed(8)) + " ... Betting move on ...");
 				
 				aBet = true;
 				sBet = false;
@@ -388,7 +389,7 @@
 		}
 		else
 		{
-			console.log("Covered ...");
+			console.log("Covered ... Profit: " + (singleBet.Profit / 100000000).toFixed(8));
 			aBet = true;
 			sBet = false;
 			setTimeout(StartBetting);
@@ -456,6 +457,7 @@
 			sumSoFar = parseInt(autoBetBasePayIn);
 			tempSum = parseInt(autoBetBasePayIn);
 			maxKoef = parseInt(autoBetBasePayIn);
+			/*
 			// console.log('Initial value for sumSoFar: ' + sumSoFar);
 			// console.log('Initial value for tempSum: ' + tempSum);
 			for (index = 1; index < 13; index++)
@@ -481,6 +483,17 @@
 			console.log('Lose coefficient will be set to: ' + (sumSoFar / parseInt(autoBetBasePayIn)));
 			console.log('Skip lost value it set to: ' + (lostValueToSkip / 100000000.0).toFixed(8));
 			console.log('Stop lost value is set to: ' + (lostValueToStop / 100000000.0).toFixed(8));
+			*/
+			for (index = 0; index < 21; index++)
+			{
+				tempSum = Math.ceil(tempSum * singleBetCoef);
+				maxKoef += tempSum;
+				// console.log('After ' + index + ' iteration sumSoFar: ' + sumSoFar);
+				// console.log('After ' + index + ' iteration tempSum: ' + tempSum);
+			}
+			
+			maxLostValue = tempSum;
+			console.log('Max lost value: ' + (maxLostValue / 100000000.0).toFixed(8) + '; maxKoef: ' + maxKoef);
 		});
 		
 		$("#targetProfitValue").blur(function()
@@ -673,7 +686,7 @@
 	<span id="log" style="display: none;"></span>
 	<hr />
 	Base PayIn:<input type="text" id="basePayIn" value="200000" /><br />
-	Target Profit:<input type="text" id="targetProfitValue" value="250000000" />
+	Target Profit:<input type="text" id="targetProfitValue" value="250000000" /><br />
 	</div>
 </body>
 </html>
