@@ -4,11 +4,10 @@
     <style>
     </style>
     <script>
-	var uid = "chechy";
-	var pwd = "passw0rd!"
+	var uid = "";
+	var pwd = ""
 	var url999 = "https://www.999dice.com/api/web.aspx";
 	var key = "ed6ba17d35234f3fa20af22de36fecd8";
-	// fe1361ec73704c289e9f9698bb50f5b6
 	var lpwdValue = '';
 	var luidValue = '';
 	
@@ -16,49 +15,36 @@
 	var lowhigh = 549999;
 	var highlow = 450000;
 	var highhigh = 999999;
-	/*
-	CURRENT:
-	var lowhigh = 499499;
-	var highlow = 500500;
-	var highhigh = 999999;
-
-	40:
-	var lowhigh = 399999;
-	var highlow = 600000;
-	var highhigh = 999999;
-
-	55:
-	var lowhigh = 549999;
-	var highlow = 450000;
-	var highhigh = 999999;
-	*/
 	var low = 0;
 	var high = 0;
 	
 	var currency = 'doge';
-	var incKeof = '2';
+	// var incKeof = '2';
 	var aBet = true;
 	var sBet = false;
 	var totalProfit = 0;
 	var sessionProfit = 0;
 	var bettingStarted = false;
 	var autoBetBasePayIn = 200000;
-	var maxBets = 7;
+	var maxBets = 8;
 	var profitTarget = 250000000;
 	var currentProfitTarget = 0;
 	var profitForWithdraw = 0;
-	var withdrawAmount = 1000000000;
-	withdrawAcount = '50060500';
+	// var withdrawAmount = 1000000000;
+	var profitTargetHitCount = 0;
 	
 	loseKoef = 734.906;
 	loseKoefMax = 734.906;
+	maxLostSequence = 15;
 	lostValueToSkip = autoBetBasePayIn * loseKoef;
 	lostValueToStop = autoBetBasePayIn * loseKoefMax;
 	
-	fromSingle = false;
 	startInternally = false;
 
 	var lastPayIn = 0;
+	var maxLost = 0;
+	var maxProfit = 0;
+	var maxBet = 0;
 	
 	var bettingMode = false;
 	
@@ -67,8 +53,6 @@
 	/// Helper functions
 	function callStartBetting(resultProfit)
 	{
-		fromSingle = false;
-		
 		if (currentProfitTarget > profitTarget)
 		{
 			currentProfitTarget = 0;
@@ -86,9 +70,13 @@
 			$("#sbalancev").html(((compactResult.StartingBalance + resultProfit) / 100000000).toFixed(8));
 			
 			bettingStarted = true;
-			// setTimeout(StartBetting);
 			
-			// return;
+			profitTargetHitCount++;
+			if (profitTargetHitCount > 20)
+			{
+				profitTargetHitCount = 0;
+				console.clear();
+			}
 		}
 	
 		setTimeout(StartBetting);
@@ -102,27 +90,31 @@
 		if (loginResponse.InvalidApiKey == 1)
 		{
 			console.error('!!!ERROR:LI: Invalid API Key: ' + key);
+			return;
 		}
-		else if (loginResponse.LoginInvalid == 1)
+		
+		if (loginResponse.LoginInvalid == 1)
 		{
 			console.error('!!!ERROR:LI: Invalid Login ...');
+			return;
 		}
-		else if (loginResponse.error)
+		
+		if (loginResponse.error)
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:LI: ' + loginResponse.error);
 			console.error('Error respone: ' + response);
-		}
-		else
-		{
-			$("#loggedin").html(uid);
-			console.log("Successfull login. SessionCookie: " + loginResponse.SessionCookie);
-			console.log("Successfull login. ClientSeed: " + loginResponse.ClientSeed);
-			$("#logininfo").hide();
-			$("#actions").show();
+			$("#startbet").attr("value", "Start Bet");
 			
-			GetBalance();
-		}	
+			return;
+		}
+
+		$("#loggedin").html(uid);
+		console.log("Successfull login ...");
+		$("#logininfo").hide();
+		$("#actions").show();
+		
+		GetBalance();
 	}
 	
 	function autoBetReady(response)
@@ -134,12 +126,15 @@
 			bettingStarted = false;
 			console.error('!!!ERROR:AB: ' + compactResult.error);
 			console.error('Error respone: ' + response);
+			$("#startbet").attr("value", "Start Bet");
+			return;
 		}
 		
 		if (compactResult.ChanceTooHigh == 1)
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:AB: Chance too High ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -147,6 +142,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:AB: Chance too Low ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -154,6 +150,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:AB: Insufficient Funds ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -161,6 +158,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:AB: No Possible Profit ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -168,6 +166,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:AB: Max Payout Exceeded ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -192,28 +191,22 @@
 		
 		if (compactResult.Profit < 0)
 		{
+			if (maxLost > compactResult.Profit)
+			{
+				maxLost = compactResult.Profit;
+				$('#maxLost').text((maxLost / 100000000).toFixed(8));
+			}
 			if (currentProfitTarget < 0)
 			{
 				if ((0 - compactResult.Profit) < lostValueToSkip)
 				{
-					// if (!fromSingle)
-					// {
-						aBet = false;
-						sBet = true;
-						
-						console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
-						setTimeout(function(){
-							PlaceSingleBet(Math.ceil(0 - compactResult.Profit * 2.50), 1000);
-						});
-					/*
-					}
-					else
-					{
-						console.warn('First lost in a row - skipping this lost: ' + compactResult.Profit);
-
-						callStartBetting( compactResult.Profit);
-					}
-					*/
+					aBet = false;
+					sBet = true;
+					
+					console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
+					setTimeout(function(){
+						PlaceSingleBet(Math.ceil(0 - compactResult.Profit * 3.50), 1000);
+					});
 				}
 				else
 				{
@@ -229,6 +222,12 @@
 		}
 		else
 		{
+			if (maxProfit < compactResult.Profit)
+			{
+				maxProfit = compactResult.Profit;
+				$('#maxProfit').text((maxProfit / 100000000).toFixed(8));
+			}
+			
 			callStartBetting( compactResult.Profit);
 		}
 	}
@@ -255,6 +254,7 @@
 			bettingStarted = false;
 			console.error('!!!ERROR:GB: ' + balance.error);
 			console.error('Error respone: ' + response);
+			$("#startbet").attr("value", "Start Bet");
 		}
 		else
 		{
@@ -279,6 +279,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:PSB: ' + singleBet.error);
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -286,6 +287,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:PSB: Chance too High ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -293,6 +295,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:PSB: Chance too Low ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -300,6 +303,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:PSB: Insufficient Funds ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -307,6 +311,7 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:PSB: No Possible Profit ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
 		
@@ -314,10 +319,9 @@
 		{
 			bettingStarted = false;
 			console.error('!!!ERROR:PSB: Max Payout Exceeded ...');
+			$("#startbet").attr("value", "Start Bet");
 			return;
 		}
-		
-		fromSingle = true;
 		
 		singleBet.Profit = singleBet.PayOut - lastPayIn;
 		
@@ -342,46 +346,37 @@
 		
 		if (singleBet.Profit < 0)
 		{
-			if ((lastPayIn * 2.50) > lostValueToStop)
+			if (maxLost > singleBet.Profit)
+			{
+				maxLost = singleBet.Profit;
+				$('#maxLost').text((maxLost / 100000000).toFixed(8));
+			}
+			
+			if ((lastPayIn * 3.50) > lostValueToStop)
 			{
 				console.warn("Too much lost will be done ... Betting stopped ...");
 				
 				aBet = true;
 				sBet = false;
 				
-				/*
-				$("#startbet").attr("value", "Start Bet");
-				$("#resetall").removeAttr('disabled');
-				
-				bettingStarted = false;
-				
-				return;
-				
-				aBet = true;
-				sBet = false;
-				*/
 				setTimeout(StartBetting);
 				
 				return;
 			}
-			/*
-			if (sessionProfit < 0 || (sessionProfit > 0 && (lastPayIn * 2.50) > (sessionProfit)))
-			{
-				console.warn("Too much lost will be done ... Continue ...");
-				aBet = true;
-				sBet = false;
-				setTimeout(StartBetting);
-				
-				return;
-			}
-			*/
+
 			console.log('Lost to cover: ' + (singleBet.Profit / 100000000).toFixed(8));
 			setTimeout(function(){
-				PlaceSingleBet(Math.ceil(lastPayIn * 2.50), 1000);
+				PlaceSingleBet(Math.ceil(lastPayIn * 3.50), 1000);
 			});
 		}
 		else
 		{
+			if (maxProfit < singleBet.Profit)
+			{
+				maxProfit = singleBet.Profit;
+				$('#maxProfit').text((maxProfit / 100000000).toFixed(8));
+			}
+			
 			console.log("Covered ...");
 			aBet = true;
 			sBet = false;
@@ -403,6 +398,7 @@
 				pwd = lpwdValue;
 				$.ajax({
 					method: "POST",
+					async: true,
 					url: url999,
 					data: { a: "Login", key: key, Username: uid, Password: pwd }
 				})
@@ -416,8 +412,6 @@
 			{
 				if (!bettingStarted)
 				{
-					fromSingle = true;
-					
 					if (!startInternally)
 					{
 						console.log('Start betting ...');
@@ -441,9 +435,6 @@
 			}
 		);
 		
-		// 0 - 399999
-		// 600000 - 999999
-		
 		$("#basePayIn").blur(function()
 		{
 			autoBetBasePayIn = $("#basePayIn").val();
@@ -452,12 +443,10 @@
 			sumSoFar = parseInt(autoBetBasePayIn);
 			tempSum = parseInt(autoBetBasePayIn);
 			maxKoef = parseInt(autoBetBasePayIn);
-			// console.log('Initial value for sumSoFar: ' + sumSoFar);
-			// console.log('Initial value for tempSum: ' + tempSum);
-			for (index = 1; index < 12; index++)
+			for (index = 1; index < maxLostSequence; index++)
 			{
 				tempSum = tempSum * 3.5;
-				if (index < 8)
+				if (index <= maxBets)
 				{
 					sumSoFar += tempSum;
 					maxKoef += tempSum;
@@ -466,8 +455,6 @@
 				{
 					maxKoef += tempSum;
 				}
-				// console.log('After ' + index + ' iteration sumSoFar: ' + sumSoFar);
-				// console.log('After ' + index + ' iteration tempSum: ' + tempSum);
 			}
 			
 			loseKoef = (sumSoFar / parseInt(autoBetBasePayIn));
@@ -475,8 +462,8 @@
 			loseKoefMax = maxKoef / parseInt(autoBetBasePayIn);
 			lostValueToStop = autoBetBasePayIn * loseKoefMax;
 			console.log('Lose coefficient will be set to: ' + (sumSoFar / parseInt(autoBetBasePayIn)));
-			console.log('Skip lost value it set to: ' + (lostValueToSkip / 100000000.0));
-			console.log('Stop lost value is set to: ' + (lostValueToStop / 100000000.0));
+			console.log('Skip lost value it set to: ' + (lostValueToSkip / 100000000.0).toFixed(8));
+			console.log('Stop lost value is set to: ' + (lostValueToStop / 100000000.0).toFixed(8));
 		});
 		
 		$("#targetProfitValue").blur(function()
@@ -521,7 +508,7 @@
 		$.ajax({
 			method: "POST",
 			url: url999,
-			async: false,
+			async: true,
 			data: { a: "GetBalance", s: loginResponse.SessionCookie, Currency: currency }
 		})
 		.done(getBalanceReady);
@@ -545,14 +532,18 @@
 			high = highhigh;
 		}
 		
-		console.log('Betting ' + ((low == lowlow)? 'low': 'high')) + ' for coverring lost';
-		
 		$("#bmode").html(((low == lowlow)? "low": "high"));
+		
+		if (maxBet < payIn)
+		{
+			maxBet = payIn;
+			$('#maxBet').text((maxBet / 100000000).toFixed(8));
+		}
 		
 		$.ajax({
 			method: "POST",
 			url: url999,
-			async: false,
+			async: true,
 			data: { 
 				a: "PlaceBet", 
 				s: loginResponse.SessionCookie, 
@@ -576,27 +567,6 @@
 			console.log('Betting stopped ...');
 			return;
 		}
-		
-		/*
-		if (profitForWithdraw > withdrawAmount)
-		{
-			console.log('Will withdraw ' + (withdrawAmount / 100000000) + ' to ' + withdrawAcount);
-			profitForWithdraw = 0;
-			$.ajax({
-				method: "POST",
-				url: url999,
-				data: { 
-					a: "Withdraw", 
-					s: loginResponse.SessionCookie, 
-					Amount: withdrawAmount,
-					Address: withdrawAcount,
-					Currency: currency
-				}
-			})
-			.done(withdrawReady);
-
-		}
-		*/
 
 		if (Math.random() < 0.5)
 		{
@@ -626,6 +596,7 @@
 				IncreaseOnLosePercent: 2.50,
 				ClientSeed: loginResponse.ClientSeed,
 				Currency: currency, 
+				async: true,
 				Compact: 1,
 				ProtocolVersion: 2
 			}
@@ -650,11 +621,14 @@
 	Session profit: <strong id="sprofitv"></strong><br />
 	Profit:<strong id="profitv"></strong><br />
 	Last Profit: <strong id="lprofitv"></strong><br />
-	betting: <strong id="bmode"></strong><br />
+	Betting: <strong id="bmode"></strong><br />
+	Max Single bet: <strong id="maxBet"></strong><br />
+	Max Profit: <strong id="maxProfit" style="color: green"></strong><br />
+	Max lost: <strong id="maxLost" style="color: red"></strong>
 	<span id="log" style="display: none;"></span>
 	<hr />
-	Base PayIn:<input type="text" id="basePayIn" value="200000" /><br />
-	Target Profit:<input type="text" id="targetProfitValue" value="250000000" />
+	<div style="width: 100px; display: inline;">Base PayIn:</div><input type="text" id="basePayIn" value="200000" /><br />
+	<div style="width: 100px; display: inline;">Target Profit:</div><input type="text" id="targetProfitValue" value="250000000" />
 	</div>
 </body>
 </html>
