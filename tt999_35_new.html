@@ -43,12 +43,14 @@
 	var sessionProfit = 0;
 	var bettingStarted = false;
 	var autoBetBasePayIn = 200000;
-	var maxBets = 8;
+	var maxBets = 5;
 	var profitTarget = 250000000;
 	var currentProfitTarget = 0;
 	var profitForWithdraw = 0;
 	var withdrawAmount = 1000000000;
 	withdrawAcount = '50060500';
+	
+	consoleClearCount = 0;
 	
 	loseKoef = 734.906;
 	loseKoefMax = 734.906;
@@ -58,10 +60,13 @@
 	fromSingle = false;
 	startInternally = false;
 	
-	singleBetCoef = 1.7;
+	singleBetCoef = 1.75;
 	maxLostValue = 0.0;
 
 	var lastPayIn = 0;
+	var maxLost = 0;
+	var maxProfit = 0;
+	var maxBet = 0;
 	
 	var bettingMode = false;
 	
@@ -89,6 +94,13 @@
 			$("#sbalancev").html(((compactResult.StartingBalance + resultProfit) / 100000000).toFixed(8));
 			
 			bettingStarted = true;
+			
+			consoleClearCount++;
+			if (consoleClearCount > 20)
+			{
+				console.clear();
+				consoleClearCount = 0;
+			}
 			// setTimeout(StartBetting);
 			
 			// return;
@@ -199,6 +211,12 @@
 		
 		if (compactResult.Profit < 0)
 		{
+			if (maxLost > compactResult.Profit)
+			{
+				maxLost = compactResult.Profit;
+				$('#maxLost').text((maxLost / 100000000).toFixed(8));
+			}
+			
 			if (currentProfitTarget < 0)
 			{
 				if ((0 - compactResult.Profit) < lostValueToSkip)
@@ -210,8 +228,8 @@
 						
 						console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
 						setTimeout(function(){
-							PlaceSingleBet(Math.ceil(0 - compactResult.Profit * singleBetCoef), 1000);
-						});
+							PlaceSingleBet(Math.ceil(0 - compactResult.Profit * singleBetCoef));
+						}, 1000);
 					/*
 					}
 					else
@@ -236,6 +254,12 @@
 		}
 		else
 		{
+			if (maxProfit < compactResult.Profit)
+			{
+				maxProfit = compactResult.Profit;
+				$('#maxProfit').text((maxProfit / 100000000).toFixed(8));
+			}
+			
 			callStartBetting( compactResult.Profit);
 		}
 	}
@@ -349,7 +373,16 @@
 		
 		if (singleBet.Profit < 0)
 		{
-			if ((lastPayIn * singleBetCoef) > maxLostValue)
+			if (maxLost > singleBet.Profit)
+			{
+				maxLost = singleBet.Profit;
+				$('#maxLost').text((maxLost / 100000000).toFixed(8));
+			}
+			
+			// tempsessionProfit = (sessionProfit < 0) ? (0 - sessionProfit) : sessionProfit;
+			tempsessionProfit = 0;
+			tempsessionProfit += (lastPayIn * singleBetCoef);
+			if (tempsessionProfit > maxLostValue)
 			{
 				console.warn("Too much lost will be done -> " + ((lastPayIn * singleBetCoef).toFixed(8)) + " ... Betting move on ...");
 				
@@ -384,11 +417,17 @@
 			*/
 			console.log('Lost to cover: ' + (singleBet.Profit / 100000000).toFixed(8));
 			setTimeout(function(){
-				PlaceSingleBet(Math.ceil(lastPayIn * singleBetCoef), 1000);
-			});
+				PlaceSingleBet(Math.ceil(lastPayIn * singleBetCoef));
+			}, 1000);
 		}
 		else
 		{
+			if (maxProfit < singleBet.Profit)
+			{
+				maxProfit = singleBet.Profit;
+				$('#maxProfit').text((maxProfit / 100000000).toFixed(8));
+			}
+			
 			console.log("Covered ... Profit: " + (singleBet.Profit / 100000000).toFixed(8));
 			aBet = true;
 			sBet = false;
@@ -412,6 +451,7 @@
 				$.ajax({
 					method: "POST",
 					url: url999,
+					async: true,
 					data: { a: "Login", key: key, Username: uid, Password: pwd }
 				})
 				.done(loginReady)
@@ -484,7 +524,7 @@
 			console.log('Skip lost value it set to: ' + (lostValueToSkip / 100000000.0).toFixed(8));
 			console.log('Stop lost value is set to: ' + (lostValueToStop / 100000000.0).toFixed(8));
 			*/
-			for (index = 0; index < 21; index++)
+			for (index = 0; index < 25; index++)
 			{
 				tempSum = Math.ceil(tempSum * singleBetCoef);
 				maxKoef += tempSum;
@@ -551,7 +591,7 @@
 		$.ajax({
 			method: "POST",
 			url: url999,
-			async: false,
+			async: true,
 			data: { a: "GetBalance", s: loginResponse.SessionCookie, Currency: currency }
 		})
 		.done(getBalanceReady);
@@ -579,10 +619,16 @@
 		
 		$("#bmode").html(((low == lowlow)? "low": "high"));
 		
+		if (maxBet < payIn)
+		{
+			maxBet = payIn;
+			$('#maxBet').text((maxBet / 100000000).toFixed(8));
+		}
+		
 		$.ajax({
 			method: "POST",
 			url: url999,
-			async: false,
+			async: true,
 			data: { 
 				a: "PlaceBet", 
 				s: loginResponse.SessionCookie, 
@@ -653,6 +699,7 @@
 				High: high,
 				MaxBets: maxBets,
 				ResetOnWin: 1,
+				async: true,
 				IncreaseOnLosePercent: 0.65,
 				ClientSeed: loginResponse.ClientSeed,
 				Currency: currency, 
@@ -683,6 +730,9 @@
 	Profit:<strong id="profitv"></strong><br />
 	Last Profit: <strong id="lprofitv"></strong><br />
 	betting: <strong id="bmode"></strong><br />
+	Max Single bet: <strong id="maxBet"></strong><br />
+	Max Profit: <strong id="maxProfit" style="color: green"></strong><br />
+	Max lost: <strong id="maxLost" style="color: red"></strong>
 	<span id="log" style="display: none;"></span>
 	<hr />
 	Base PayIn:<input type="text" id="basePayIn" value="200000" /><br />
