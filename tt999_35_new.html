@@ -67,6 +67,8 @@
 	var maxLost = 0;
 	var maxProfit = 0;
 	var maxBet = 0;
+	var maxSequentialBets = 5;
+	var currentSequentialBets = 0;
 	
 	var bettingMode = false;
 	
@@ -107,6 +109,35 @@
 		}
 	
 		setTimeout(StartBetting);
+	}
+	
+	function changeBetRange()
+	{
+		if (low == lowlow)
+		{
+			low = highlow;
+			high = highhigh;
+		}
+		else
+		{
+			low = lowlow;
+			high = lowhigh;
+		}
+	}
+	
+	function setRandonBetRange()
+	{
+		if (Math.random() < 0.5)
+		{
+			low = highlow;
+			high = highhigh;
+		}
+		else
+		{
+			low = lowlow;
+			high = lowhigh;
+		}
+
 	}
 	/// END: Helper functions
 	
@@ -227,6 +258,23 @@
 						sBet = true;
 						
 						console.log('Start coverring: ' + (compactResult.Profit / 100000000).toFixed(8) + ' after betting on ' + ((low == lowlow)? 'low': 'high'));
+						
+						changeBetRange();
+						/*
+						if (low == lowlow)
+						{
+							low = highlow;
+							high = highhigh;
+						}
+						else
+						{
+							low = lowlow;
+							high = lowhigh;
+						}
+						*/
+						
+						currentSequentialBets = 0;
+
 						setTimeout(function(){
 							PlaceSingleBet(Math.ceil(0 - compactResult.Profit * singleBetCoef));
 						}, 1000);
@@ -416,6 +464,27 @@
 			}
 			*/
 			console.log('Lost to cover: ' + (singleBet.Profit / 100000000).toFixed(8));
+			
+			if (currentSequentialBets > maxSequentialBets)
+			{
+				currentSequentialBets = 0;
+				
+				changeBetRange();
+				/*
+				if (low == lowlow)
+				{
+					low = highlow;
+					high = highhigh;
+				}
+				else
+				{
+					low = lowlow;
+					high = lowhigh;
+				}
+				*/
+			}
+			currentSequentialBets++;
+			
 			setTimeout(function(){
 				PlaceSingleBet(Math.ceil(lastPayIn * singleBetCoef));
 			}, 1000);
@@ -542,6 +611,17 @@
 			console.log("Profit Target is changed to: " + (profitTarget / 100000000.0).toFixed(8));
 		});
 		
+		$("#maxseqbets").blur(function()
+		{
+			maxSequentialBets = $("#maxseqbets").val();
+			console.log("Max Sequential bets is changed to: " + maxSequentialBets);
+		});
+		
+		$("#maxseqbets").keyup(function () 
+		{ 
+			this.value = this.value.replace(/[^0-9\.]/g,'');
+		});
+		
 		/// Login Details
 		$("#lpwd").blur(function()
 		{
@@ -604,6 +684,7 @@
 		lastPayIn = payIn;
 		var singleBet = null;
 		
+		/*
 		if (Math.random() < 0.5)
 		{
 			low = lowlow;
@@ -614,6 +695,7 @@
 			low = highlow;
 			high = highhigh;
 		}
+		*/
 		
 		console.log('Betting ' + ((low == lowlow)? 'low': 'high')) + ' for coverring lost';
 		
@@ -674,6 +756,8 @@
 		}
 		*/
 
+		setRandonBetRange();
+		/*
 		if (Math.random() < 0.5)
 		{
 			low = lowlow;
@@ -684,6 +768,7 @@
 			low = highlow;
 			high = highhigh;
 		}
+		*/
 		
 		$("#bmode").html(((low == lowlow)? "low": "high"));
 
@@ -737,6 +822,7 @@
 	<hr />
 	Base PayIn:<input type="text" id="basePayIn" value="200000" /><br />
 	Target Profit:<input type="text" id="targetProfitValue" value="250000000" /><br />
+	Max seq bets:<input type="text" id="maxseqbets" value="5" /><br />
 	</div>
 </body>
 </html>
